@@ -1,0 +1,20 @@
+{
+    "model": {
+        "output_size": 8,
+        "learning_rate": 0.00005
+    }, 
+    "trainer": {
+        "epoch_amount": 6,
+        "batch_fit_amount": 100
+    },
+    "loader": {
+        "batch_size": 15,
+        "worker_amount": 4,
+        "shuffle": true
+    },
+    "img": {
+        "colours": 3,
+        "height": 432,
+        "width": 300
+    }
+}
