@@ -1,0 +1,6 @@
+*.zip
+Assignment1/ICT303 - Assignment 1.ipynb
+
+Assignment1/data/*
+__pycache__
+ICT303
