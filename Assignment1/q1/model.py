@@ -24,13 +24,13 @@ def create_dataset(fpath, transformer, options):
     loader = DataLoader(dataset, batch_size=options['loader']['batch_size'], shuffle=options['loader']['shuffle'], num_workers=options['loader']['worker_amount'])
     return dataset, loader
 
-def train(options, train_loader):
+def train(options, train_loader, writer):
     # Width*Height*Amount of Colours
     input_size = options['img']['colours']*options['img']['height']*options['img']['width']
 
     # We want to create the model.
     model = MLP(input_size=input_size, output_size=options['model']['output_size'], lr=options['model']['learning_rate'])
-    trainer = Trainer(n_epochs=options['trainer']['epoch_amount'], batch_amount=options['trainer']['batch_fit_amount']) # Create the trainer
+    trainer = Trainer(n_epochs=options['trainer']['epoch_amount'], batch_amount=options['trainer']['batch_fit_amount'], writer=writer) # Create the trainer
     trainer.fit(model=model, data=train_loader) # Fit the model, with no data for now.
 
     # Return our MLP class

@@ -1,7 +1,11 @@
 @ECHO off
-:run:
+:run
 cls
+rmdir /s /q "./logs"
 python -m q1.a1_q1
+
+pause
+C:\Users\daemc\AppData\Roaming\Python\Python313\Scripts\tensorboard.exe --logdir=logs
 
 pause
 goto run

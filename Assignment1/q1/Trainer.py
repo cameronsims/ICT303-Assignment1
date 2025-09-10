@@ -9,7 +9,7 @@ class Trainer:
     :description: Trains the MLP
     """
 
-    def __init__(self, n_epochs=3, batch_amount=10):
+    def __init__(self, n_epochs=3, batch_amount=10, writer=None):
         """
         :param n_epochs: Number of epochs to train for
         :param batch_amount: Number of batches, used to help with fitting
@@ -18,6 +18,9 @@ class Trainer:
 
         self.max_epochs = n_epochs # Set the maximum number of epochs
         self.batch_amount = batch_amount    # The amount of mini-batches
+        self.writer = writer
+
+        Trainer.fit_epoch.epoch = 0
 
     def fit(self, model, data):
         """
@@ -47,7 +50,12 @@ class Trainer:
         """
         :description: Fit for the current epoch
         """
+        from torch import max as torch_max
+
         current_loss = 0.0 # The cost, have we done well this epoch?
+        Trainer.fit_epoch.epoch += 1
+        correct = 0
+        total = 0
         
         # For the training data, we will iterate and test the network weights
         # The loss will then be created, compared and see if we need to adjust after mini batching.
@@ -59,10 +67,21 @@ class Trainer:
 
             # Get important values, from this model given the inputs.
             outputs = self.model(inputs) # What are the outputs?
+
+            # Get the accuracy of the training data...
+            index, predicted = torch_max(outputs, 1)
+            correct = (predicted == target).sum().item()
+            total = target.size(0)
+
+
             loss = self.model.loss(outputs, target) # What is the loss from this input-output?
-            
+
             loss.backward() # Get the gradients of the model.
             self.optimiser.step() # Perform a new step.
+
+            # Add to the writer
+            self.writer.add_scalar('Loss/train', current_loss, Trainer.fit_epoch.epoch)
+            self.writer.add_scalar('Accuracy/train', correct/total, Trainer.fit_epoch.epoch)
 
             # Do some mini-batch statistics printing.
             current_loss += loss.item()

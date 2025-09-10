@@ -41,17 +41,20 @@ def estimate_get_percent(labels, labels_estimated):
     return float(correct / label_len)
 """
 
-def estimate(model, loader):
+def estimate(model, loader, writer):
     # Imports 
     from torchvision.utils import make_grid as make_grid
+    import torch.nn as nn
 
     #for images, labels in test_loader:
     #data_iterator = iter(loader) # Used to iterate through the data.
     #images, labels = next(data_iterator) # Get the next batch of images and labels.
     correct = 0
     amount = 0
+    loss_average = 0
 
     # Estimate the images-labels
+    criterion = nn.CrossEntropyLoss()
     for images, labels in loader:
         labels_estimated = estimate_labels(model, images)
         label_amount = len(labels)
@@ -66,7 +69,19 @@ def estimate(model, loader):
                 correct += 1
             i += 1
 
+        # Get loss
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss_normal = loss.item() * labels.size(0)
+        loss_average += loss_normal
+
         amount += label_amount
+    
+
+    loss_average /= amount
+
+    writer.add_scalar('Loss/valid', loss_average, 0)
+    writer.add_scalar('Accuracy/valid', correct/amount, 0)
 
     #imshow(make_grid(images)) # Show the images.
     return float(correct / amount)
@@ -79,6 +94,8 @@ def main():
     from os import getcwd as os_getcwd
     from torchvision import transforms
     from datetime import datetime
+
+    from torch.utils.tensorboard import SummaryWriter
 
     # This is the file path of the dataset, it is assumed to just be within './data/*'
     data_fpath = os_getcwd() + '/data'
@@ -103,24 +120,38 @@ def main():
     # These are the imports for reading from the dataset.
     train_dataset, train_loader = mdl.create_dataset(data_train_fpath, transformer, options)
 
+    # These are for validating the dataset.
+    valid_dataset, valid_loader = mdl.create_dataset(data_valid_fpath, transformer, options)
+
     # These are for testing the dataset.
-    test_dataset, test_loader = mdl.create_dataset(data_valid_fpath, transformer, options)
+    test_dataset, test_loader = mdl.create_dataset(data_test_fpath, transformer, options)
+
+    # Create a tensorboard.
+    writer = SummaryWriter(log_dir=os_getcwd() + '/logs/q1')
 
     # We want to create the mdl.
-    model = mdl.train(options=options, train_loader=train_loader)
+    model = mdl.train(options=options, train_loader=train_loader, writer=writer)
 
     # Show what the numbers mean 
     # model_print_classes(train_dataset, test_dataset)
 
     # Use to test the data, get the accuracy
-    accuracy = estimate(model, test_loader)
+    accuracy = estimate(model, valid_loader, writer)
 
     # This is where the performance calc ends.
     end = datetime.now()
     total_time = (end - start)
 
     # Print out the performance line
-    mdl.print_performance(options, total_time, accuracy)
+    # mdl.print_performance(options, total_time, accuracy)
+    
+
+    # Use the validator...
+    print('Graphing...')
+    images, labels = next(iter(train_loader)) 
+    writer.add_graph(model, images)
+
+    writer.close()
 
 
 # Synatic sugar, makes the main function look like the start of the program!
