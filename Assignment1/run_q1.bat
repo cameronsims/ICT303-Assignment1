@@ -1,7 +1,7 @@
 @ECHO off
 :run
 cls
-rmdir /s /q "./logs"
+rmdir /s /q "./logs/q1"
 python -m q1.a1_q1
 
 pause

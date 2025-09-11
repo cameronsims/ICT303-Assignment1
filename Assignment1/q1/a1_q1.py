@@ -94,6 +94,7 @@ def main():
     from os import getcwd as os_getcwd
     from torchvision import transforms
     from datetime import datetime
+    import torch
 
     from torch.utils.tensorboard import SummaryWriter
 
@@ -114,8 +115,8 @@ def main():
         transforms.Normalize((0.5,), (0.5,)) # We have RGB Inputs, hence 3 values.
     ])
 
-    # Start the performance calculations.
-    start = datetime.now()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Device:', device)
 
     # These are the imports for reading from the dataset.
     train_dataset, train_loader = mdl.create_dataset(data_train_fpath, transformer, options)
@@ -130,21 +131,13 @@ def main():
     writer = SummaryWriter(log_dir=os_getcwd() + '/logs/q1')
 
     # We want to create the mdl.
-    model = mdl.train(options=options, train_loader=train_loader, writer=writer)
+    model = mdl.train(model_class=MLP, options=options, train_loader=train_loader, writer=writer, device=device)
 
     # Show what the numbers mean 
     # model_print_classes(train_dataset, test_dataset)
 
     # Use to test the data, get the accuracy
     accuracy = estimate(model, valid_loader, writer)
-
-    # This is where the performance calc ends.
-    end = datetime.now()
-    total_time = (end - start)
-
-    # Print out the performance line
-    # mdl.print_performance(options, total_time, accuracy)
-    
 
     # Use the validator...
     print('Graphing...')

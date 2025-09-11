@@ -9,13 +9,14 @@ class Trainer:
     :description: Trains the MLP
     """
 
-    def __init__(self, n_epochs=3, batch_amount=10, writer=None):
+    def __init__(self, n_epochs=3, batch_amount=10, writer=None, device='cpu'):
         """
         :param n_epochs: Number of epochs to train for
         :param batch_amount: Number of batches, used to help with fitting
         :description: Creates the trainer class, for use with training the MLP
         """
 
+        self.device = device
         self.max_epochs = n_epochs # Set the maximum number of epochs
         self.batch_amount = batch_amount    # The amount of mini-batches
         self.writer = writer
@@ -32,16 +33,21 @@ class Trainer:
 
         # Configure the optimizer using the model's method
         self.optimiser = model.configure_optimizers()   # Seppo spelling because Python
-        self.model = model
+        self.model = model.to(self.device)
 
         # Tell the user we have started training...
         print("Training process has started...")
 
-        # For each epoch, we will fit.
+        # For deach epoch, we will fit.
         # Note: I hate using for range(...) in Python, it gives terrible performance with higher values.
         i = 0
         while i < self.max_epochs:
             self.fit_epoch() # Fitting step.
+
+            # Add to the writer
+            self.writer.add_scalar('Loss/train', self.training_average_loss, Trainer.fit_epoch.epoch)
+            self.writer.add_scalar('Accuracy/train', self.training_accuracy, Trainer.fit_epoch.epoch)
+
             i += 1
 
         print("Training process has finished!")
@@ -53,6 +59,8 @@ class Trainer:
         from torch import max as torch_max
 
         current_loss = 0.0 # The cost, have we done well this epoch?
+        self.training_average_loss = 0.0
+
         Trainer.fit_epoch.epoch += 1
         correct = 0
         total = 0
@@ -60,9 +68,9 @@ class Trainer:
         # For the training data, we will iterate and test the network weights
         # The loss will then be created, compared and see if we need to adjust after mini batching.
         max_batch_remainder = self.batch_amount - 1
-        for i, current_data in enumerate(self.data):
+        for i, (inputs, target) in enumerate(self.data):
             # For each input...
-            inputs, target = current_data # Get the inputs, and it's ground truth.
+            inputs, target = inputs.to(self.device), target.to(self.device) # Get the inputs, and it's ground truth.
             self.optimiser.zero_grad() # Set the optimiser, removing the gradients.
 
             # Get important values, from this model given the inputs.
@@ -73,18 +81,15 @@ class Trainer:
             correct = (predicted == target).sum().item()
             total = target.size(0)
 
-
             loss = self.model.loss(outputs, target) # What is the loss from this input-output?
 
             loss.backward() # Get the gradients of the model.
             self.optimiser.step() # Perform a new step.
 
-            # Add to the writer
-            self.writer.add_scalar('Loss/train', current_loss, Trainer.fit_epoch.epoch)
-            self.writer.add_scalar('Accuracy/train', correct/total, Trainer.fit_epoch.epoch)
-
             # Do some mini-batch statistics printing.
             current_loss += loss.item()
+            self.training_average_loss += loss.item()
+
             if i % self.batch_amount == max_batch_remainder:
                 # Variables to make next line look pretty.
                 batch_number = i + 1
@@ -94,3 +99,7 @@ class Trainer:
                 print('Loss after mini-batch %d: %.3f' % (batch_number, batch_percent))
 
                 current_loss = 0.0 # Reset the loss after the elapsed amount of batches.
+        
+        # The average training loss
+        self.training_average_loss = self.training_average_loss / i
+        self.training_accuracy = correct / i
